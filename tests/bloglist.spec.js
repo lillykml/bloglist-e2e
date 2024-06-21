@@ -1,6 +1,5 @@
 const { test, expect, beforeEach, describe } = require('@playwright/test')
 
-let authToken;
 
 describe('Blog app', () => {
 
@@ -31,6 +30,7 @@ describe('Blog app', () => {
       await expect(page.getByText('Matti Luukkainen logged in')).toBeVisible()
     })
 
+
     test('fails with wrong credentials', async ({ page }) => {
       await page.getByTestId('username').fill('mluukkai')
       await page.getByTestId('password').fill('wrongpassword')
@@ -41,26 +41,18 @@ describe('Blog app', () => {
 
   describe('When logged in', () => {
 
-    beforeEach(async({ request, page }) => {
-      const response = await request.post('http://localhost:3003/api/login', {
-        data: {
-          username: 'mluukkai',
-          password: 'salainen'
-        }
-      })
-      expect(response.ok()).toBeTruthy();
-      const responseBody = await response.json();
-      authToken = responseBody.token
+    beforeEach(async({ page }) => {
+      await page.getByTestId('username').fill('mluukkai')
+      await page.getByTestId('password').fill('salainen')
+      await page.getByTestId('login-button').click()
+      await expect(page.getByText('Matti Luukkainen logged in')).toBeVisible()
 
-      // Set the token in the browser context
-      await page.evaluate((token) => {
-        localStorage.setItem('loggedAppUser', JSON.stringify({ token }));
-        console.log('Stored token in localStorage:', localStorage.getItem('loggedAppUser'));
-      }, authToken);
-      await page.evaluate(() => {
-        console.log('Local Storage:', JSON.stringify(localStorage));
-      });
-      await page.goto('http://localhost:5173')
+      // Log the contents of local storage after login
+      // const localStorageContent = await page.evaluate(() => localStorage)
+      // console.log(localStorageContent)
+      // console.log(JSON.parse(localStorageContent.loggedAppUser))
+      // console.log(JSON.parse(localStorageContent.loggedAppUser).token)
+      page.reload()
     })
 
     test('a new blog can be created', async ({ page }) => {
@@ -90,6 +82,18 @@ describe('Blog app', () => {
         await page.getByRole('button', {name: 'Like'}).click()
         const endLikes = Number(await page.getByTestId('blog-likes'))
         expect(endLikes === beginningLikes-1)
+      })
+
+      test('Blog can be deleted by creator', async({ page }) => {
+        await page.getByRole('button', {name: 'view'}).click()
+        page.on('dialog', dialog => dialog.accept());
+        await page.getByRole('button', {name: 'Remove'}).click()
+        // Wait for the blog post details to disappear
+        await page.waitForSelector('.blogpost', { state: 'hidden' });
+
+        // Assert that the blogpost element is not visible on the page
+        const blogpostElements = await page.$$('.blogpost');
+        expect(blogpostElements).toHaveLength(0);
       })
     })
   })
