@@ -61,9 +61,6 @@ describe('Blog app', () => {
         console.log('Local Storage:', JSON.stringify(localStorage));
       });
       await page.goto('http://localhost:5173')
-      // await page.getByTestId('username').fill('mluukkai')
-      // await page.getByTestId('password').fill('salainen')
-      // await page.getByTestId('login-button').click()
     })
 
     test('a new blog can be created', async ({ page }) => {
@@ -78,5 +75,22 @@ describe('Blog app', () => {
       await expect(latestBlogPost.locator('.blog-author')).toContainText('Shimano Taki');
     })
 
+    describe('when a new blog exists', () => {
+      beforeEach(async({ request, page }) => {
+        await page.getByRole('button', {name: 'create new blog'}).click()
+        await page.getByTestId('new-blog-title').fill('My newest blog about roadbikes')
+        await page.getByTestId('new-blog-author').fill('Shimano Taki')
+        await page.getByTestId('new-blog-url').fill('shimano.bikes.com')
+        await page.getByRole('button', {name: 'Create'}).click()
+      })
+
+      test('Blog can be liked', async({ page }) => {
+        await page.getByRole('button', {name: 'view'}).click()
+        const beginningLikes = Number(await page.getByTestId('blog-likes'))
+        await page.getByRole('button', {name: 'Like'}).click()
+        const endLikes = Number(await page.getByTestId('blog-likes'))
+        expect(endLikes === beginningLikes-1)
+      })
+    })
   })
 })
